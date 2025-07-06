@@ -11,7 +11,7 @@ set -euo pipefail
 
 # https://github.com/nf-core
 
-ORG=nf-core
+ORG="$1"
 OUTPUT_DIR=output
 OUTPUT_FILE="${OUTPUT_DIR}/${ORG}.tsv"
 
@@ -38,8 +38,8 @@ get_last_commit () {
 # get list of all repos in the Org
 # REPOS=$(gh api "orgs/${ORG}/repos" --jq '.[].full_name')
 # TODO: how to search >1000?
-REPOS="$(gh search repos --limit 1000 --owner "${ORG}" --json name,updatedAt --jq '.[] | [.name, .updatedAt] | @tsv' )"
-
+# REPOS="$(gh search repos --limit 1000 --owner "${ORG}" --json name,updatedAt --jq '.[] | [.name, .updatedAt] | @tsv' )"
+REPOS="$(gh repo list nextflow-io --limit 100000 --json name,updatedAt --jq '.[] | [.name, .updatedAt] | @tsv')"
 
 while read -r repo updatedAt; do
     echo "org: $ORG, repo: $repo updatedAt: $updatedAt"
@@ -58,7 +58,7 @@ while read -r repo updatedAt; do
     <(echo "$LAST_COMMIT") \
     >> "${OUTPUT_FILE}"
 
-    sleep 3
+    sleep 2 # beware of API rate limits !
 
     done < <(echo "$CONTRIBUTORS")
 done < <(echo "$REPOS")
