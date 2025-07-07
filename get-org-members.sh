@@ -39,7 +39,7 @@ get_last_commit () {
 # REPOS=$(gh api "orgs/${ORG}/repos" --jq '.[].full_name')
 # TODO: how to search >1000?
 # REPOS="$(gh search repos --limit 1000 --owner "${ORG}" --json name,updatedAt --jq '.[] | [.name, .updatedAt] | @tsv' )"
-REPOS="$(gh repo list nextflow-io --limit 100000 --json name,updatedAt --jq '.[] | [.name, .updatedAt] | @tsv')"
+REPOS="$(gh repo list "$ORG" --limit 100000 --json name,updatedAt --jq '.[] | [.name, .updatedAt] | @tsv')"
 
 while read -r repo updatedAt; do
     echo "org: $ORG, repo: $repo updatedAt: $updatedAt"
