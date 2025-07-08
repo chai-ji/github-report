@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -exuo pipefail
 
 # https://cli.github.com/manual/gh_api
 # https://docs.github.com/en/rest/users?apiVersion=2022-11-28
@@ -13,7 +13,7 @@ set -euo pipefail
 
 ORG="$1"
 OUTPUT_DIR=output
-OUTPUT_FILE="${OUTPUT_DIR}/${ORG}.tsv"
+OUTPUT_FILE="${OUTPUT_DIR}/${ORG}.$(date +'%s').tsv"
 
 # TODO: better output handling
 mkdir -p "$OUTPUT_DIR"
@@ -35,30 +35,38 @@ get_last_commit () {
     echo "$LAST_COMMIT"
 }
 
+get_contributors () {
+    local org="$1"
+    local repo="$2"
+    local CONTRIBUTORS="$(gh api repos/${org}/${repo}/contributors --jq '.[] | [.login,.contributions] | @tsv' || echo '' )"
+
+    echo "$CONTRIBUTORS"
+}
+
 # get list of all repos in the Org
 # REPOS=$(gh api "orgs/${ORG}/repos" --jq '.[].full_name')
 # TODO: how to search >1000?
 # REPOS="$(gh search repos --limit 1000 --owner "${ORG}" --json name,updatedAt --jq '.[] | [.name, .updatedAt] | @tsv' )"
-REPOS="$(gh repo list "$ORG" --limit 100000 --json name,updatedAt --jq '.[] | [.name, .updatedAt] | @tsv')"
+REPOS="$(gh repo list "$ORG" --limit 100000 --json name,updatedAt --jq '.[] | [.name, .updatedAt] | @tsv' | sort -k 2,2 )"
 
 while read -r repo updatedAt; do
     echo "org: $ORG, repo: $repo updatedAt: $updatedAt"
 
-    CONTRIBUTORS="$(gh api repos/${ORG}/${repo}/contributors --jq '.[] | [.login,.contributions] | @tsv')"
+    CONTRIBUTORS="$(get_contributors "${ORG}" "${repo}")"
 
     while read -r contributor contributions; do
-    LAST_COMMIT="$(get_last_commit "${ORG}" "${repo}" "$contributor")"
+        LAST_COMMIT="$(get_last_commit "${ORG}" "${repo}" "$contributor")"
 
-    paste \
-    <(echo "$ORG") \
-    <(echo "$repo") \
-    <(echo "$updatedAt") \
-    <(echo "$contributor") \
-    <(echo "$contributions") \
-    <(echo "$LAST_COMMIT") \
-    >> "${OUTPUT_FILE}"
+        paste \
+        <(echo "$ORG") \
+        <(echo "$repo") \
+        <(echo "$updatedAt") \
+        <(echo "$contributor") \
+        <(echo "$contributions") \
+        <(echo "$LAST_COMMIT") \
+        >> "${OUTPUT_FILE}"
 
-    sleep 2 # beware of API rate limits !
+        sleep 2 # beware of API rate limits !
 
     done < <(echo "$CONTRIBUTORS")
 done < <(echo "$REPOS")
